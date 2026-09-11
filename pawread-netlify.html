@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PawRead — Emotional AI for Dogs</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#F7F6F3;--surface:#fff;--text:#1A1A18;--muted:#6B6B66;--faint:#A8A8A3;--accent:#2D5A3D;--accent-light:#E8F0EA;--border:#E4E4DF;--r:16px}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+.logo{font-size:22px;font-style:italic;letter-spacing:-.5px}.logo b{color:var(--accent);font-style:normal}
+.hright{display:flex;align-items:center;gap:12px}
+.htag{font-size:11px;font-weight:500;color:var(--faint);letter-spacing:.5px;text-transform:uppercase}
+.langs{display:flex;gap:3px;background:var(--border);border-radius:8px;padding:3px}
+.lang{background:none;border:none;padding:5px 9px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:5px;font-family:inherit}
+.lang.on{background:#fff;color:var(--text)}
+main{max-width:960px;margin:0 auto;padding:36px 16px 80px}
+.hero{text-align:center;margin-bottom:32px}
+.hero h1{font-size:clamp(26px,4vw,44px);line-height:1.1;letter-spacing:-1px;margin-bottom:10px;font-style:italic}
+.hero h1 em{color:var(--accent);font-style:normal}
+.hero p{font-size:15px;font-weight:300;color:var(--muted);max-width:460px;margin:0 auto;line-height:1.6}
+.tabs{display:flex;gap:6px;margin-bottom:22px;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:5px}
+.tab{flex:1;padding:11px 8px;border:none;background:none;font-family:inherit;font-size:14px;font-weight:500;color:var(--muted);cursor:pointer;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px}
+.tab.on{background:var(--accent);color:#fff}
+.panel{display:none}.panel.on{display:block}
+
+/* LIVE */
+.cam-grid{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
+.cam-wrap{position:relative;background:#0a0a0a;border-radius:var(--r);overflow:hidden;aspect-ratio:4/3}
+video{width:100%;height:100%;object-fit:cover;display:block}
+canvas{display:none}
+.cam-start{position:absolute;inset:0;background:#0d1a10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center}
+.cam-start p{font-size:13px;color:rgba(255,255,255,.5);line-height:1.5;max-width:200px}
+.ov-top{position:absolute;top:0;left:0;right:0;padding:14px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(to bottom,rgba(0,0,0,.55),transparent)}
+.ov-bot{position:absolute;bottom:0;left:0;right:0;padding:14px;background:linear-gradient(to top,rgba(0,0,0,.45),transparent);display:flex;flex-wrap:wrap;gap:6px}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#fff;text-transform:uppercase}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#ef4444;animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.dom-badge{font-size:13px;font-weight:500;color:#fff;background:rgba(255,255,255,.15);backdrop-filter:blur(6px);padding:5px 12px;border-radius:20px}
+.sig-tag{font-size:11px;color:rgba(255,255,255,.8);background:rgba(255,255,255,.1);padding:3px 8px;border-radius:4px}
+.cam-ctrl{display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap}
+.speed-row{display:flex;align-items:center;gap:6px;margin-top:8px}
+.speed-lbl{font-size:12px;color:var(--faint)}
+.spd{background:#fff;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+.spd.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.analyzing{font-size:12px;color:var(--faint);display:none;align-items:center;gap:5px}
+.analyzing.show{display:flex}
+.mini-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pulse .9s infinite}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* EMOTION PANEL */
+.e-panel{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:22px}
+.e-panel-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);margin-bottom:18px;display:block}
+.e-idle{font-size:13px;color:var(--faint);line-height:1.6;font-weight:300}
+.ebar{margin-bottom:13px}
+.ebar:last-child{margin-bottom:0}
+.ebar-row{display:flex;justify-content:space-between;margin-bottom:5px}
+.ebar-name{font-size:13px;color:var(--muted)}
+.ebar-val{font-size:13px;font-weight:500;color:var(--accent)}
+.ebar-track{height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+.ebar-fill{height:100%;background:var(--accent);border-radius:3px;width:0;transition:width .6s cubic-bezier(.4,0,.2,1)}
+
+/* UPLOAD */
+.upload-zone{background:#fff;border:2px dashed var(--border);border-radius:var(--r);padding:48px 24px;text-align:center;cursor:pointer;margin-bottom:20px;transition:border-color .2s}
+.upload-zone:hover{border-color:var(--accent)}
+.upload-icon{width:52px;height:52px;background:var(--accent-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.upload-zone h3{font-size:19px;margin-bottom:8px;font-style:italic}
+.upload-zone p{font-size:14px;color:var(--muted);font-weight:300}
+.upload-hint{font-size:12px;color:var(--faint);margin-top:6px}
+.preview-wrap{position:relative;margin-bottom:16px}
+.preview-wrap img{width:100%;max-height:360px;object-fit:cover;border-radius:14px;border:1px solid var(--border);display:block}
+.change-btn{position:absolute;top:12px;right:12px;background:rgba(26,26,24,.72);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit;backdrop-filter:blur(6px)}
+
+/* BUTTONS */
+.btn{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:14px 20px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;width:100%;margin-bottom:16px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-sm{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;flex:1}
+.btn-outline{background:none;color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-family:inherit;font-size:13px;cursor:pointer}
+.btn-cam{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer}
+
+/* LOADING */
+.loading{display:none;text-align:center;padding:32px}
+.loading.show{display:block}
+.dots{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+.loading p{font-size:14px;color:var(--muted);font-weight:300}
+
+/* RESULTS */
+.results{display:none}.results.show{display:block;animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.res-head{margin-bottom:22px}
+.res-head h2{font-size:24px;font-style:italic;letter-spacing:-.5px;margin-bottom:4px}
+.res-head p{font-size:13px;color:var(--muted);font-weight:300}
+.accent-card{background:var(--accent);border-radius:var(--r);padding:24px 28px;color:#fff;margin-bottom:18px}
+.accent-card h3{font-size:20px;font-style:italic;margin-bottom:8px}
+.accent-card p{font-size:14px;font-weight:300;line-height:1.7;opacity:.88}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:18px}
+.card-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);margin-bottom:18px;display:block}
+.advice-item{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;color:var(--muted);font-weight:300;line-height:1.6}
+.advice-item:last-child{border-bottom:none}
+.advice-ic{width:20px;height:20px;background:var(--accent-light);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;margin-top:2px}
+
+/* HISTORY */
+.hist-section{margin-top:40px;padding-top:30px;border-top:1px solid var(--border)}
+.hist-section h2{font-size:20px;font-style:italic;letter-spacing:-.3px;margin-bottom:16px}
+.hist-empty{text-align:center;padding:32px;color:var(--faint);font-size:14px;font-weight:300;background:#fff;border:1px solid var(--border);border-radius:var(--r)}
+.hist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.hist-item{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.hist-item img{width:100%;height:110px;object-fit:cover}
+.hist-info{padding:10px 12px}
+.hist-dom{font-size:13px;font-weight:500;margin-bottom:2px}
+.hist-date{font-size:11px;color:var(--faint)}
+
+.error{background:#FEF2F2;border:1px solid #FCA5A5;border-radius:10px;padding:12px 16px;font-size:14px;color:#B91C1C;margin-bottom:16px;display:none}
+.error.show{display:block}
+.disclaimer{margin-top:36px;padding:16px 20px;background:#fff;border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--faint);text-align:center;line-height:1.6}
+@media(max-width:680px){.cam-grid{grid-template-columns:1fr}.htag{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Paw<b>Read</b></div>
+  <div class="hright">
+    <span class="htag">Emotional AI · Beta</span>
+    <div class="langs">
+      <button class="lang on" data-l="es">ES</button>
+      <button class="lang" data-l="en">EN</button>
+      <button class="lang" data-l="pt">PT</button>
+      <button class="lang" data-l="fr">FR</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1 id="heroTitle"></h1>
+    <p id="heroSub"></p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="tabLive">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="2 3"/></svg>
+      <span id="tabLiveLabel"></span>
+    </button>
+    <button class="tab" id="tabUpload">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+      <span id="tabUploadLabel"></span>
+    </button>
+  </div>
+
+  <!-- LIVE -->
+  <div class="panel on" id="panelLive">
+    <div class="cam-grid">
+      <div>
+        <div class="cam-wrap" id="camWrap">
+          <video id="videoEl" autoplay playsinline muted></video>
+          <canvas id="canvasEl"></canvas>
+          <div class="cam-start" id="camStart">
+            <div style="width:60px;height:60px;background:rgba(45,90,61,.3);border-radius:50%;display:flex;align-items:center;justify-content:center">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6aad7e" stroke-width="1.5"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            </div>
+            <p id="camHint"></p>
+            <button class="btn-cam" id="btnStartCam"></button>
+            <p id="camErr" style="font-size:12px;color:#f87171;display:none;max-width:220px"></p>
+          </div>
+          <div class="ov-top" id="ovTop" style="display:none">
+            <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+            <div class="dom-badge" id="domBadge">—</div>
+          </div>
+          <div class="ov-bot" id="ovBot" style="display:none"></div>
+        </div>
+        <div class="cam-ctrl" id="camCtrl" style="display:none">
+          <button class="btn-outline" id="btnStop"></button>
+          <div class="analyzing" id="analyzingInd"><div class="mini-dot"></div><span id="analyzingTxt"></span></div>
+          <button class="btn-sm" id="btnSnapshot"></button>
+        </div>
+        <div class="speed-row" id="speedRow" style="display:none">
+          <span class="speed-lbl" id="speedLbl"></span>
+          <button class="spd on" data-v="2000">2s</button>
+          <button class="spd" data-v="3000">3s</button>
+          <button class="spd" data-v="5000">5s</button>
+          <button class="spd" data-v="8000">8s</button>
+        </div>
+      </div>
+      <div class="e-panel">
+        <span class="e-panel-lbl" id="panelLbl"></span>
+        <div id="panelBars"><p class="e-idle" id="panelIdle"></p></div>
+      </div>
+    </div>
+    <div class="results" id="snapResults" style="margin-top:24px">
+      <div class="accent-card"><h3 id="snapMood"></h3><p id="snapSummary"></p></div>
+      <div class="card"><span class="card-lbl" id="snapAdvLbl"></span><div id="snapAdvice"></div></div>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="panel" id="panelUpload">
+    <div class="upload-zone" id="uploadZone">
+      <div class="upload-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2D5A3D" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+      </div>
+      <h3 id="upTitle"></h3>
+      <p id="upSub"></p>
+      <p class="upload-hint" id="upHint"></p>
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display:none">
+    </div>
+    <div class="preview-wrap" id="previewWrap" style="display:none">
+      <img id="previewImg" src="" alt="">
+      <button class="change-btn" id="changeBtn"></button>
+    </div>
+    <button class="btn" id="analyzeBtn" style="display:none"></button>
+    <div class="error" id="uploadError"></div>
+    <div class="loading" id="loadingEl">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <p id="loadingTxt"></p>
+    </div>
+    <div class="results" id="uploadResults">
+      <div class="res-head"><h2 id="resTitle"></h2><p id="resSub"></p></div>
+      <div class="accent-card"><h3 id="resMood"></h3><p id="resSummary"></p></div>
+      <div class="card"><span class="card-lbl" id="resBarsLbl"></span><div id="resBars"></div></div>
+      <div class="card"><span class="card-lbl" id="resAdvLbl"></span><div id="resAdvice"></div></div>
+    </div>
+    <div class="hist-section">
+      <h2 id="histTitle"></h2>
+      <div class="hist-empty" id="histEmpty"></div>
+      <div class="hist-grid" id="histGrid" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="disclaimer" id="disclaimer"></div>
+</main>
+
+<script>
+const TX = {
+  es:{hero_title:'¿Qué está <em>sintiendo</em> tu perro ahora mismo?',hero_sub:'La IA lee lenguaje corporal y postura en tiempo real para descifrar su estado emocional.',tab_live:'Cámara en vivo',tab_upload:'Subir foto',cam_hint:'Apunta la cámara a tu perro para ver su estado emocional en tiempo real.',cam_btn:'Activar cámara',cam_stop:'Detener',cam_analyzing:'Analizando…',cam_snap:'Guardar análisis',panel_lbl:'Estado emocional',speed_lbl:'Cada',panel_idle:'Activa la cámara y apunta a tu perro para ver el análisis en vivo.',up_title:'Sube una foto',up_sub:'Haz clic para seleccionar una imagen',up_hint:'JPG o PNG — mejores resultados con cuerpo completo visible',change:'Cambiar foto',analyze:'Analizar estado emocional',loading:'Leyendo lenguaje corporal…',breakdown:'Desglose emocional',advice:'Qué puedes hacer ahora',hist_title:'Análisis anteriores',hist_empty:'Tu historial aparecerá aquí después de tu primer análisis.',disclaimer:'PawRead usa visión IA para interpretar señales conductuales. Los resultados son orientativos y no reemplazan una evaluación veterinaria.',detected:'detectado',err_nodog:'No se detectó un perro o la imagen no es suficientemente clara.',err_gen:'Ocurrió un error. Por favor intenta de nuevo.',ai_lang:'Responde ÚNICAMENTE en español.',enames:['Felicidad','Calma','Curiosidad','Ansiedad','Excitación','Afecto']},
+  en:{hero_title:'What is your dog <em>feeling</em> right now?',hero_sub:"AI reads body language and posture in real time to decode your dog's emotional state.",tab_live:'Live camera',tab_upload:'Upload photo',cam_hint:'Point the camera at your dog to see their emotional state in real time.',cam_btn:'Start camera',cam_stop:'Stop',cam_analyzing:'Analyzing…',cam_snap:'Save analysis',panel_lbl:'Emotional state',speed_lbl:'Every',panel_idle:'Start the camera and point it at your dog to see the live analysis.',up_title:'Upload a photo',up_sub:'Click to select an image',up_hint:'JPG or PNG — best results with full body visible',change:'Change photo',analyze:'Analyze emotional state',loading:'Reading body language…',breakdown:'Emotional breakdown',advice:'What you can do now',hist_title:'Previous reads',hist_empty:'Your history will appear here after your first analysis.',disclaimer:'PawRead uses AI vision to interpret behavioral signals. Results are not a substitute for veterinary assessment.',detected:'detected',err_nodog:'No dog detected or image too unclear.',err_gen:'Something went wrong. Please try again.',ai_lang:'Respond ONLY in English.',enames:['Happiness','Calmness','Curiosity','Anxiety','Excitement','Affection']},
+  pt:{hero_title:'O que seu cachorro está <em>sentindo</em> agora?',hero_sub:'A IA lê linguagem corporal e postura em tempo real para decifrar o estado emocional do seu cão.',tab_live:'Câmera ao vivo',tab_upload:'Enviar foto',cam_hint:'Aponte a câmera para o seu cachorro para ver o estado emocional em tempo real.',cam_btn:'Ativar câmera',cam_stop:'Parar',cam_analyzing:'Analisando…',cam_snap:'Salvar análise',panel_lbl:'Estado emocional',speed_lbl:'A cada',panel_idle:'Ative a câmera e aponte para o seu cachorro para ver a análise ao vivo.',up_title:'Enviar uma foto',up_sub:'Clique para selecionar uma imagem',up_hint:'JPG ou PNG — melhores resultados com o corpo inteiro visível',change:'Trocar foto',analyze:'Analisar estado emocional',loading:'Lendo linguagem corporal…',breakdown:'Detalhamento emocional',advice:'O que você pode fazer agora',hist_title:'Análises anteriores',hist_empty:'Seu histórico aparecerá aqui após a primeira análise.',disclaimer:'PawRead usa visão de IA para interpretar sinais comportamentais. Os resultados não substituem uma avaliação veterinária.',detected:'detectado',err_nodog:'Nenhum cachorro detectado ou imagem muito pouco clara.',err_gen:'Ocorreu um erro. Por favor, tente novamente.',ai_lang:'Responda SOMENTE em português.',enames:['Felicidade','Calma','Curiosidade','Ansiedade','Excitação','Afeto']},
+  fr:{hero_title:'Que <em>ressent</em> votre chien en ce moment?',hero_sub:"L'IA lit le langage corporel et la posture en temps réel pour décoder l'état émotionnel de votre chien.",tab_live:'Caméra en direct',tab_upload:'Télécharger photo',cam_hint:'Pointez la caméra vers votre chien pour voir son état émotionnel en temps réel.',cam_btn:'Activer la caméra',cam_stop:'Arrêter',cam_analyzing:'Analyse…',cam_snap:"Enregistrer l'analyse",panel_lbl:'État émotionnel',speed_lbl:'Toutes les',panel_idle:"Démarrez la caméra et pointez-la vers votre chien pour voir l'analyse en direct.",up_title:'Télécharger une photo',up_sub:'Cliquez pour sélectionner une image',up_hint:'JPG ou PNG — meilleurs résultats avec le corps entier visible',change:'Changer la photo',analyze:"Analyser l'état émotionnel",loading:'Lecture du langage corporel…',breakdown:'Détail émotionnel',advice:'Ce que vous pouvez faire maintenant',hist_title:'Analyses précédentes',hist_empty:'Votre historique apparaîtra ici après votre première analyse.',disclaimer:"PawRead utilise la vision IA pour interpréter les signaux comportementaux. Les résultats ne remplacent pas une évaluation vétérinaire.",detected:'détecté',err_nodog:'Aucun chien détecté ou image trop floue.',err_gen:"Une erreur s'est produite. Veuillez réessayer.",ai_lang:'Répondez UNIQUEMENT en français.',enames:['Bonheur','Calme','Curiosité','Anxiété','Excitation','Affection']},
+};
+
+let lang='es', lx=TX.es, speed=2000, camStream=null, camInterval=null, isAnalyzing=false, imgBase64=null, history=[];
+
+function t(k){return lx[k]||TX.en[k]||k}
+
+function applyLang(){
+  lx=TX[lang];
+  document.getElementById('heroTitle').innerHTML=t('hero_title');
+  document.getElementById('heroSub').textContent=t('hero_sub');
+  document.getElementById('tabLiveLabel').textContent=t('tab_live');
+  document.getElementById('tabUploadLabel').textContent=t('tab_upload');
+  document.getElementById('camHint').textContent=t('cam_hint');
+  document.getElementById('btnStartCam').textContent=t('cam_btn');
+  document.getElementById('btnStop').textContent=t('cam_stop');
+  document.getElementById('analyzingTxt').textContent=t('cam_analyzing');
+  document.getElementById('btnSnapshot').textContent=t('cam_snap');
+  document.getElementById('panelLbl').textContent=t('panel_lbl');
+  document.getElementById('speedLbl').textContent=t('speed_lbl');
+  document.getElementById('panelIdle').textContent=t('panel_idle');
+  document.getElementById('upTitle').textContent=t('up_title');
+  document.getElementById('upSub').textContent=t('up_sub');
+  document.getElementById('upHint').textContent=t('up_hint');
+  document.getElementById('changeBtn').textContent=t('change');
+  document.getElementById('analyzeBtn').textContent=t('analyze');
+  document.getElementById('loadingTxt').textContent=t('loading');
+  document.getElementById('resBarsLbl').textContent=t('breakdown');
+  document.getElementById('resAdvLbl').textContent=t('advice');
+  document.getElementById('snapAdvLbl').textContent=t('advice');
+  document.getElementById('histTitle').textContent=t('hist_title');
+  document.getElementById('histEmpty').textContent=t('hist_empty');
+  document.getElementById('disclaimer').textContent=t('disclaimer');
+  document.querySelectorAll('.lang').forEach(b=>b.classList.toggle('on',b.dataset.l===lang));
+}
+
+document.querySelectorAll('.lang').forEach(b=>b.addEventListener('click',()=>{lang=b.dataset.l;applyLang();}));
+
+// TABS
+function setTab(which){
+  document.getElementById('tabLive').classList.toggle('on',which==='live');
+  document.getElementById('tabUpload').classList.toggle('on',which==='upload');
+  document.getElementById('panelLive').classList.toggle('on',which==='live');
+  document.getElementById('panelUpload').classList.toggle('on',which==='upload');
+  if(which==='upload'&&camStream) stopCamera();
+}
+document.getElementById('tabLive').addEventListener('click',()=>setTab('live'));
+document.getElementById('tabUpload').addEventListener('click',()=>setTab('upload'));
+
+// CAMERA
+async function startCamera(){
+  document.getElementById('camErr').style.display='none';
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280}}});
+    document.getElementById('videoEl').srcObject=camStream;
+    document.getElementById('camStart').style.display='none';
+    document.getElementById('ovTop').style.display='flex';
+    document.getElementById('ovBot').style.display='flex';
+    document.getElementById('camCtrl').style.display='flex';
+    document.getElementById('speedRow').style.display='flex';
+    startLiveLoop();
+  }catch(e){
+    const el=document.getElementById('camErr');
+    el.textContent='No se pudo acceder a la cámara. Verifica los permisos del navegador.';
+    el.style.display='block';
+  }
+}
+
+function stopCamera(){
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+  clearInterval(camInterval);
+  document.getElementById('videoEl').srcObject=null;
+  document.getElementById('camStart').style.display='flex';
+  document.getElementById('ovTop').style.display='none';
+  document.getElementById('ovBot').style.display='none';
+  document.getElementById('camCtrl').style.display='none';
+  document.getElementById('speedRow').style.display='none';
+  document.getElementById('panelBars').innerHTML='<p class="e-idle">'+t('panel_idle')+'</p>';
+  document.getElementById('domBadge').textContent='—';
+  document.getElementById('ovBot').innerHTML='';
+}
+
+function startLiveLoop(){
+  clearInterval(camInterval);
+  runLive();
+  camInterval=setInterval(runLive,speed);
+}
+
+function captureFrame(){
+  const v=document.getElementById('videoEl'),c=document.getElementById('canvasEl');
+  c.width=v.videoWidth||640;c.height=v.videoHeight||480;
+  c.getContext('2d').drawImage(v,0,0);
+  return c.toDataURL('image/jpeg',0.72).split(',')[1];
+}
+
+async function runLive(){
+  if(isAnalyzing||!camStream)return;
+  isAnalyzing=true;
+  document.getElementById('analyzingInd').classList.add('show');
+  const b64=captureFrame();
+  const names=t('enames');
+  const prompt=`You are a canine behavioral expert. ${t('ai_lang')}
+Analyze this dog photo for emotional state. Respond ONLY valid JSON no markdown:
+{"dominant_emotion":"one word","emotions":[{"name":"${names[0]}","value":0},{"name":"${names[1]}","value":0},{"name":"${names[2]}","value":0},{"name":"${names[3]}","value":0},{"name":"${names[4]}","value":0},{"name":"${names[5]}","value":0}],"signals":["cue1","cue2"],"no_dog":false}
+Replace 0 with actual values 0-100. If no dog set no_dog:true.`;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:350,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:prompt}]}]})});
+    const d=await r.json();
+    const raw=d.content.map(x=>x.text||'').join('');
+    const res=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if(!res.no_dog){
+      document.getElementById('domBadge').textContent=res.dominant_emotion||'—';
+      document.getElementById('ovBot').innerHTML=(res.signals||[]).map(s=>`<span class="sig-tag">${s}</span>`).join('');
+      renderPanelBars(res.emotions);
+    }
+  }catch(e){console.error(e);}
+  finally{isAnalyzing=false;document.getElementById('analyzingInd').classList.remove('show');}
+}
+
+function renderPanelBars(emotions){
+  const sorted=[...emotions].sort((a,b)=>b.value-a.value);
+  const pb=document.getElementById('panelBars');
+  pb.innerHTML=sorted.map(e=>`<div class="ebar"><div class="ebar-row"><span class="ebar-name">${e.name}</span><span class="ebar-val">${e.value}%</span></div><div class="ebar-track"><div class="ebar-fill" data-w="${e.value}"></div></div></div>`).join('');
+  requestAnimationFrame(()=>pb.querySelectorAll('.ebar-fill').forEach(f=>{f.style.width=f.dataset.w+'%';}));
+}
+
+document.getElementById('btnStartCam').addEventListener('click',startCamera);
+document.getElementById('btnStop').addEventListener('click',stopCamera);
+document.querySelectorAll('.spd').forEach(b=>b.addEventListener('click',()=>{
+  speed=parseInt(b.dataset.v);
+  document.querySelectorAll('.spd').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  if(camStream)startLiveLoop();
+}));
+
+async function saveSnapshot(){
+  if(!camStream)return;
+  const b64=captureFrame();
+  const names=t('enames');
+  const prompt=`You are a canine behavioral expert. ${t('ai_lang')}
+Analyze this dog photo in full detail. Respond ONLY valid JSON no markdown:
+{"dominant_emotion":"one word","mood_headline":"max 6 words","summary":"2-3 sentences","emotions":[{"name":"${names[0]}","value":0},{"name":"${names[1]}","value":0},{"name":"${names[2]}","value":0},{"name":"${names[3]}","value":0},{"name":"${names[4]}","value":0},{"name":"${names[5]}","value":0}],"advice":["tip1","tip2","tip3"],"no_dog":false}
+Replace 0 with actual values 0-100.`;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:prompt}]}]})});
+    const d=await r.json();
+    const raw=d.content.map(x=>x.text||'').join('');
+    const res=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if(!res.no_dog){
+      document.getElementById('snapMood').textContent=res.mood_headline||'';
+      document.getElementById('snapSummary').textContent=res.summary||'';
+      const adv=document.getElementById('snapAdvice');
+      adv.innerHTML=(res.advice||[]).map((tip,i)=>`<div class="advice-item"><div class="advice-ic">${['↑','●','◆'][i]}</div><span>${tip}</span></div>`).join('');
+      document.getElementById('snapResults').classList.add('show');
+    }
+  }catch(e){console.error(e);}
+}
+document.getElementById('btnSnapshot').addEventListener('click',saveSnapshot);
+
+// UPLOAD
+document.getElementById('uploadZone').addEventListener('click',()=>document.getElementById('fileInput').click());
+document.getElementById('changeBtn').addEventListener('click',()=>document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change',function(){
+  if(this.files&&this.files[0])handleFile(this.files[0]);
+});
+
+// Drag and drop
+const uz=document.getElementById('uploadZone');
+uz.addEventListener('dragover',e=>{e.preventDefault();uz.style.borderColor='#2D5A3D';});
+uz.addEventListener('dragleave',()=>uz.style.borderColor='');
+uz.addEventListener('drop',e=>{e.preventDefault();uz.style.borderColor='';if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+
+function handleFile(file){
+  if(!file.type.startsWith('image/'))return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    imgBase64=e.target.result.split(',')[1];
+    document.getElementById('previewImg').src=e.target.result;
+    document.getElementById('uploadZone').style.display='none';
+    document.getElementById('previewWrap').style.display='block';
+    document.getElementById('analyzeBtn').style.display='block';
+    document.getElementById('uploadResults').classList.remove('show');
+    document.getElementById('uploadError').classList.remove('show');
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('analyzeBtn').addEventListener('click',async()=>{
+  if(!imgBase64)return;
+  const btn=document.getElementById('analyzeBtn');
+  btn.disabled=true;
+  document.getElementById('loadingEl').classList.add('show');
+  document.getElementById('uploadResults').classList.remove('show');
+  document.getElementById('uploadError').classList.remove('show');
+  const names=t('enames');
+  const prompt=`You are a canine behavioral expert. ${t('ai_lang')}
+Analyze this dog photo. Respond ONLY valid JSON no markdown:
+{"dominant_emotion":"one word","mood_headline":"max 6 words","summary":"2-3 sentences","emotions":[{"name":"${names[0]}","value":0},{"name":"${names[1]}","value":0},{"name":"${names[2]}","value":0},{"name":"${names[3]}","value":0},{"name":"${names[4]}","value":0},{"name":"${names[5]}","value":0}],"advice":["tip1","tip2","tip3"],"visible_signals":"brief description","no_dog":false}
+Replace 0 with actual values 0-100. If no dog set no_dog:true.`;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:900,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:imgBase64}},{type:'text',text:prompt}]}]})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error?.message);
+    const raw=d.content.map(x=>x.text||'').join('');
+    const res=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if(res.no_dog){showErr(t('err_nodog'));return;}
+    document.getElementById('resTitle').textContent=(res.dominant_emotion||'')+' '+t('detected');
+    document.getElementById('resSub').textContent=res.visible_signals||'';
+    document.getElementById('resMood').textContent=res.mood_headline||'';
+    document.getElementById('resSummary').textContent=res.summary||'';
+    const bars=document.getElementById('resBars');
+    const sorted=[...res.emotions].sort((a,b)=>b.value-a.value);
+    bars.innerHTML=sorted.map(e=>`<div class="ebar"><div class="ebar-row"><span class="ebar-name">${e.name}</span><span class="ebar-val">${e.value}%</span></div><div class="ebar-track"><div class="ebar-fill" data-w="${e.value}"></div></div></div>`).join('');
+    setTimeout(()=>bars.querySelectorAll('.ebar-fill').forEach(f=>{f.style.width=f.dataset.w+'%';}),80);
+    document.getElementById('resAdvice').innerHTML=(res.advice||[]).map((tip,i)=>`<div class="advice-item"><div class="advice-ic">${['↑','●','◆'][i]}</div><span>${tip}</span></div>`).join('');
+    document.getElementById('uploadResults').classList.add('show');
+    // history
+    history.unshift({id:Date.now(),dominant_emotion:res.dominant_emotion,thumbnail:document.getElementById('previewImg').src,ts:Date.now()});
+    if(history.length>12)history=history.slice(0,12);
+    renderHistory();
+  }catch(e){console.error(e);showErr(t('err_gen'));}
+  finally{document.getElementById('loadingEl').classList.remove('show');btn.disabled=false;}
+});
+
+function showErr(msg){const el=document.getElementById('uploadError');el.textContent=msg;el.classList.add('show');}
+
+function renderHistory(){
+  const grid=document.getElementById('histGrid'),empty=document.getElementById('histEmpty');
+  if(history.length===0){empty.style.display='block';grid.style.display='none';return;}
+  empty.style.display='none';grid.style.display='grid';
+  grid.innerHTML=history.map(item=>`<div class="hist-item"><img src="${item.thumbnail}" alt="${item.dominant_emotion}"><div class="hist-info"><div class="hist-dom">${item.dominant_emotion}</div><div class="hist-date">${new Date(item.ts).toLocaleDateString()}</div></div></div>`).join('');
+}
+
+applyLang();
+</script>
+</body>
+</html>
